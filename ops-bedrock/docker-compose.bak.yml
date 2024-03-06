@@ -8,7 +8,6 @@ volumes:
   l1_data:
   l2_data:
   op_log:
-  magi_data:
 
 
 services:
@@ -27,8 +26,8 @@ services:
       context: .
       dockerfile: Dockerfile.l1
     ports:
-      - "7545:8545"
-      - "7546:8546"
+      - "8545:8545"
+      - "8546:8546"
       - "7060:6060"
     volumes:
       - "l1_data:/db"
@@ -37,63 +36,37 @@ services:
     environment:
       GETH_MINER_RECOMMIT: 100ms
 
-  # l2:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.l2
-  #   ports:
-  #     - "8545:8545"
-  #     - "8060:6060"
-  #     - "8551:8551"
-  #   volumes:
-  #     - "l2_data:/db"
-  #     - "${PWD}/../.devnet/genesis-l2.json:/genesis.json"
-  #     - "${PWD}/test-jwt-secret.txt:/config/test-jwt-secret.txt"
-  #     # - "${PWD}/entrypoint_opreth.sh:/entrypoint.sh"
-  #   entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
-  #     - "/bin/sh"
-  #     - "/entrypoint.sh"
-  #     - "--authrpc.jwtsecret=/config/test-jwt-secret.txt"
-  #   environment:
-  #     GETH_MINER_RECOMMIT: 100ms
-
   l2:
-    image: reth:optimism-default-handler
+    build:
+      context: .
+      dockerfile: Dockerfile.l2
     ports:
-      - "8545:8545"
+      - "9545:8545"
       - "8060:6060"
-      - "8551:8551"
+    volumes:
+      - "l2_data:/db"
+      - "${PWD}/../.devnet/genesis-l2.json:/genesis.json"
+      - "${PWD}/test-jwt-secret.txt:/config/test-jwt-secret.txt"
     entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
       - "/bin/sh"
       - "/entrypoint.sh"
-      # - "--rollup.compute-pending-block"
-      # - "--rollup.enable-genesis-walkback"
-      # - "--rollup.sequencer-http=http://op-node:8545"
-      # - "--disable-discovery"
-      # - "-vvvvv"   # enable trace log
-      - "-vvvv"   # enable debug log
-    volumes:
-      - "${PWD}/../.devnet/genesis-l2.json:/genesis.json"
-      - "${PWD}/test-jwt-secret.txt:/config/jwt-secret.txt"
-      - "${PWD}/entrypoint_opreth.sh:/entrypoint.sh"
+      - "--authrpc.jwtsecret=/config/test-jwt-secret.txt"
+    environment:
+      GETH_MINER_RECOMMIT: 100ms
 
-  # op-node:
-  #   image: a16zcrypto/magi:latest
-  #   entrypoint: /scripts/start-magi.sh
-  #   # # depends_on:
-  #   # #   - op-geth
-  #   environment:
-  #     - RUST_BACKTRACE=full
-  #   env_file:
-  #     - magi/.env
+  # l2:
+  #   image: reth:optimism
   #   ports:
-  #     - 9200:9200
-  #     # - "${RPC_PORT}:${RPC_PORT}"
-  #     - 9545:8545
+  #     - "9545:8545"
+  #     - "8660:6060"
+  #   entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
+  #     - "/bin/sh"
+  #     - "/entrypoint.sh"
+  #     - "--rollup.compute-pending-block"
+  #     - "--rollup.enable-genesis-walkback"
   #   volumes:
-  #     - ./magi:/scripts
-  #     - magi_data:/data
-  #     - "${PWD}/../.devnet/rollup.json:/rollup.json"
+  #     - "${PWD}/../.devnet/genesis-l2.json:/genesis.json"
+  #     - "${PWD}/test-jwt-secret.txt:/config/jwt-secret.txt"
 
   op-node:
     depends_on:
@@ -131,16 +104,53 @@ services:
       --pprof.enabled
       --rpc.enable-admin
     ports:
-      - "9545:8545"   # rpc
-      - "9003:9003"   # p2p
-      - "7300:7300"   # metrics
-      - "6060:6060"   # pprof
+      - "7545:8545"
+      - "9003:9003"
+      - "7300:7300"
+      - "6060:6060"
     volumes:
       - "${PWD}/p2p-sequencer-key.txt:/config/p2p-sequencer-key.txt"
       - "${PWD}/p2p-node-key.txt:/config/p2p-node-key.txt"
       - "${PWD}/test-jwt-secret.txt:/config/test-jwt-secret.txt"
       - "${PWD}/../.devnet/rollup.json:/rollup.json"
       - op_log:/op_log
+
+  # op-node-2:
+  #   build:
+  #     context: ../
+  #     dockerfile: ./op-node/Dockerfile
+  #     args:
+  #       OP_STACK_GO_BUILDER: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:devnet
+  #   image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:devnet
+  #   command: >
+  #     op-node
+  #     --l1=ws://l1:8546
+  #     --l2=http://l2-2:8551
+  #     --l2.jwt-secret=/config/test-jwt-secret.txt
+  #     --sequencer.l1-confs=0
+  #     --verifier.l1-confs=0
+  #     --p2p.sequencer.key=8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba
+  #     --rollup.config=/rollup.json
+  #     --rpc.addr=0.0.0.0
+  #     --rpc.port=8545
+  #     --p2p.listen.ip=0.0.0.0
+  #     --p2p.listen.tcp=9003
+  #     --p2p.listen.udp=9003
+  #     --p2p.scoring.peers=light
+  #     --p2p.ban.peers=true
+  #     --p2p.priv.path=/config/p2p-node-key.txt
+  #     --metrics.enabled
+  #     --metrics.addr=0.0.0.0
+  #     --metrics.port=7300
+  #     --pprof.enabled
+  #     --rpc.enable-admin
+  #   environment:
+  #     OP_NODE_DA_RPC: "da:26650"
+  #   volumes:
+  #     - "./p2p-sequencer-key.txt:/config/p2p-sequencer-key.txt"
+  #     - "./p2p-node-key.txt:/config/p2p-node-key.txt"
+  #     - "./test-jwt-secret.txt:/config/test-jwt-secret.txt"
+  #     - "../.devnet/rollup.json:/rollup.json"
 
   op-proposer:
     depends_on:

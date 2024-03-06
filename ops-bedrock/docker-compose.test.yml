@@ -1,0 +1,78 @@
+version: '3.4'
+
+
+services:
+  op_stack_go_builder:  # Not an actual service, but builds the prerequisite go images
+    build:
+      context: ../
+      dockerfile: ops/docker/op-stack-go/Dockerfile
+      args:
+        GIT_COMMIT: "dev"
+        GIT_DATE: "0"
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:devnet
+    entrypoint: ["echo", "build complete"]
+
+  # op-node:
+  #   depends_on:
+  #     - op_stack_go_builder
+  #   build:
+  #     context: ../
+  #     dockerfile: ./op-node/Dockerfile
+  #     args:
+  #       OP_STACK_GO_BUILDER: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:devnet
+  #   image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:devnet
+  #   command: >
+  #     op-node
+  #     --l1=ws://l1:8546
+  #     --l2=http://192.168.7.89:8551
+  #     --l2.jwt-secret=/config/test-jwt-secret.txt
+  #     --sequencer.enabled
+  #     --sequencer.l1-confs=0
+  #     --verifier.l1-confs=0
+  #     --p2p.sequencer.key=8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba
+  #     --rollup.config=/rollup.json
+  #     --rpc.addr=0.0.0.0
+  #     --rpc.port=8545
+  #     --p2p.listen.ip=0.0.0.0
+  #     --p2p.listen.tcp=9003
+  #     --p2p.listen.udp=9003
+  #     --p2p.scoring.peers=light
+  #     --p2p.ban.peers=true
+  #     --p2p.priv.path=/config/p2p-node-key.txt
+  #     --metrics.enabled
+  #     --metrics.addr=0.0.0.0
+  #     --metrics.port=7300
+  #     --pprof.enabled
+  #     --rpc.enable-admin
+  #   ports:
+  #     - "7545:8545"
+  #     - "9003:9003"
+  #     - "7300:7300"
+  #     - "6060:6060"
+  #   volumes:
+  #     - "${PWD}/p2p-sequencer-key.txt:/config/p2p-sequencer-key.txt"
+  #     - "${PWD}/p2p-node-key.txt:/config/p2p-node-key.txt"
+  #     - "${PWD}/test-jwt-secret.txt:/config/test-jwt-secret.txt"
+  #     - "${PWD}/../.devnet/rollup.json:/rollup.json"
+
+  op-node:
+    depends_on:
+      - op_stack_go_builder
+    build:
+      context: ../
+      dockerfile: ./op-node/Dockerfile
+      args:
+        OP_STACK_GO_BUILDER: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:devnet
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:devnet
+    command: >
+      op-node
+      --network="base-mainnet"
+      --l1=https://hidden-wild-snowflake.base-mainnet.quiknode.pro/8cdbe2ac3dfa7cc84d07d8802553f31db836b355
+      --l1.beacon=https://hidden-wild-snowflake.base-mainnet.quiknode.pro/8cdbe2ac3dfa7cc84d07d8802553f31db836b355
+      --l2=http://192.168.7.89:8551
+      --l2.jwt-secret=/config/test-jwt-secret.txt
+      --rpc.addr=0.0.0.0
+      --rpc.port=7000
+      --l1.trustrpc
+    volumes:
+      - "${PWD}/test-jwt-secret.txt:/config/test-jwt-secret.txt"

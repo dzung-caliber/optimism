@@ -178,8 +178,8 @@ def devnet_deploy(paths):
     run_command(['docker', 'compose', 'up', '-d', 'l1'], cwd=paths.ops_bedrock_dir, env={
         'PWD': paths.ops_bedrock_dir
     })
-    wait_up(8545)
-    wait_for_rpc_server('127.0.0.1:8545')
+    wait_up(7545)
+    wait_for_rpc_server('127.0.0.1:7545')
 
     if os.path.exists(paths.genesis_l2_path):
         log.info('L2 genesis and rollup configs already generated.')
@@ -187,7 +187,7 @@ def devnet_deploy(paths):
         log.info('Generating L2 genesis and rollup configs.')
         run_command([
             'go', 'run', 'cmd/main.go', 'genesis', 'l2',
-            '--l1-rpc', 'http://localhost:8545',
+            '--l1-rpc', 'http://localhost:7545',
             '--deploy-config', paths.devnet_config_path,
             '--l1-deployments', paths.addresses_json_path,
             '--outfile.l2', paths.genesis_l2_path,
@@ -204,8 +204,8 @@ def devnet_deploy(paths):
     })
 
     # Wait for the L2 to be available.
-    wait_up(9545)
-    wait_for_rpc_server('127.0.0.1:9545')
+    wait_up(8545)
+    wait_for_rpc_server('127.0.0.1:8545')
 
     # Print out the addresses being used for easier debugging.
     l2_output_oracle = addresses['L2OutputOracleProxy']
@@ -229,6 +229,9 @@ def devnet_deploy(paths):
         docker_env['PROPOSAL_INTERVAL'] = '10s'
     else:
         docker_env['L2OO_ADDRESS'] = l2_output_oracle
+
+    print(docker_env)
+    # return
 
     # Bring up the rest of the services.
     log.info('Bringing up `op-node`, `op-proposer` and `op-batcher`.')
